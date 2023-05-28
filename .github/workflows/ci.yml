@@ -20,7 +20,7 @@ jobs:
       - run: pnpm test:all
   build:
     runs-on: ubuntu-latest
-    depends-on: test
+    nneds: test
     steps:
       - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v2
