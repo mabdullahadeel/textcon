@@ -16,8 +16,16 @@
     "react",
     "react-context",
     "selectors",
-    "state-management"
+    "state-management",
+    "react-state-management",
+    "react-state",
+    "react-context-state",
+    "fine-grained-reactivity",
+    "user-selector"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Abdullah Adeel (contact.abdadeel@gmail.com)",
   "license": "ISC",
   "devDependencies": {
