@@ -8,7 +8,8 @@ on:
     branches:
       - "staging"
     pull_request:
-      - closed
+      types:
+        - closed
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
