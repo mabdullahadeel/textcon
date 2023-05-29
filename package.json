@@ -1,6 +1,6 @@
 {
   "name": "textcon",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A react state management library that uses context and provide selector support for fine grainded reactivity",
   "main": "dist/index.cjs.js",
   "module": "dist/index.es.js",
