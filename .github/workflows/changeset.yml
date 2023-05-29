@@ -4,12 +4,9 @@ on:
     workflows: ["CI"]
     types:
       - completed
-  push:
+  merge:
     branches:
       - "staging"
-    pull_request:
-      types:
-        - closed
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
