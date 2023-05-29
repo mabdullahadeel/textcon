@@ -1,4 +1,4 @@
-name: Publish
+name: Changeset
 on:
   workflow_run:
     workflows: ["CI"]
@@ -11,22 +11,28 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  publish:
+  changeset:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repo
       - uses: actions/checkout@v3
+
+      - name: Setup pnpm
       - uses: pnpm/action-setup@v2
         with:
           version: 8
+
+      - name: Setup Node
       - uses: actions/setup-node@v3
         with:
           node-version: 16.x
           cache: "pnpm"
 
+      - nameL Install Dependencies
       - run: pnpm install --frozen-lockfile
-      - name: Create Release Pull Request for Changeset
-        id: changesets
+
+      - name: Create Release Pull Request
         uses: changesets/action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

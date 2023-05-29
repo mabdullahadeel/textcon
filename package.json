@@ -9,7 +9,8 @@
     "test": "vitest",
     "lint": "tsc",
     "test:all": "pnpm run lint && pnpm run test",
-    "build": "vite build"
+    "build": "vite build",
+    "release": "pnpm run build && changeset publish"
   },
   "keywords": [
     "react",
