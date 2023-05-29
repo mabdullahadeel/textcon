@@ -6,7 +6,7 @@ on:
       - completed
   push:
     branches:
-      - staging
+      - master
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
