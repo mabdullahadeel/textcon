@@ -1,11 +1,8 @@
 import isEqual from "lodash.isequal";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import React, { createContext, useCallback, useContext, useRef } from "react";
+
+// explicit import from shim allow to use with react >= 17
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepEqual(first: any, second: any) {
