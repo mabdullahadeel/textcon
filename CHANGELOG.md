@@ -1,5 +1,14 @@
 # textcon
 
+## 0.0.3
+
+### Patch Changes
+
+- 6d0cf67: update deps
+
+  - use shim version of `useSyncExternalStore` to support `react>=17`
+  - mode deps to dev
+
 ## 0.0.2
 
 ### Patch Changes
