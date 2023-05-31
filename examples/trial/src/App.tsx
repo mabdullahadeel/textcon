@@ -39,7 +39,7 @@ function App() {
       <div className="card">
         <button onClick={() => increment()}>increment: {get.count}</button>
         <button onClick={() => decrement()}>decrement</button>
-        <button onClick={() => incrementBy()}>By</button>
+        <button onClick={() => incrementBy({ by: 10 })}>By</button>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>

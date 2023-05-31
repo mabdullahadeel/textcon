@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import isEqual from "lodash.isequal";
 import React, { createContext, useCallback, useContext, useRef } from "react";
 
 // explicit import from shim allow to use with react >= 17
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepEqual(first: any, second: any) {
   return isEqual(first, second);
 }
@@ -18,7 +18,7 @@ export type ContextOptions = {
   global?: boolean;
 };
 
-type SetterArgs<Store> = Partial<Store> | ((prev: Store) => Partial<Store>);
+type SetterArgs<Store> = Store | ((prev: Store) => Store);
 type ExtractActionKeys<T> = {
   [K in keyof T]: T[K] extends (
     stateProps: never,
@@ -28,7 +28,7 @@ type ExtractActionKeys<T> = {
       ? Payload extends undefined
         ? () => void
         : (payload: Payload) => void
-      : never
+      : () => void
     : never;
 };
 
@@ -37,7 +37,6 @@ type Prettify<T> = {
   // eslint-disable-next-line @typescript-eslint/ban-types
 } & {};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ActionablePayload<Payload = any> = {
   payload: Payload;
 };
@@ -54,12 +53,41 @@ type Actions<Store> = {
   ) => void | Promise<void>;
 };
 
+type ContextReturnType<Store, A extends Actions<Store>> = {
+  Provider: React.FC<{ children: React.ReactNode }>;
+  useStore: <SelectorOutput = Store>(
+    selector?: (store: Store) => SelectorOutput,
+    options?: SelectorOptions<SelectorOutput>
+  ) => {
+    get: SelectorOutput;
+    set: (value: SetterArgs<Store>) => void;
+    selector: () => Store;
+  };
+  useActions: () => Prettify<ExtractActionKeys<A>>;
+  subscribe: (
+    selector: (store: Store) => Store,
+    callback: (state: Store) => void,
+    options?: SelectorOptions<Store>
+  ) => () => void;
+  unsubscribe: (callback: (state: Store) => void) => void;
+};
+
+function isFunction(value: any): value is (prev: any) => any {
+  return typeof value === "function";
+}
+
+export function createContextStore<Store, A extends Actions<Store>>(
+  ...args: Extract<A, { payload: A }> extends { payload: infer Payload }
+    ? [initialState: Store, actions?: A, options?: ContextOptions]
+    : [initialState: Store, options?: ContextOptions]
+): ContextReturnType<Store, A>;
+
 // eslint-disable-next-line max-lines-per-function
-function createContextCore<Store>(
+export function createContextStore<Store, A extends Actions<Store>>(
   initialState: Store,
-  actions: Actions<Store> = {},
+  actions: A = {} as A,
   options: ContextOptions = {}
-) {
+): ContextReturnType<Store, A> {
   let globalStore: Store | undefined = options.global
     ? initialState
     : undefined;
@@ -73,7 +101,7 @@ function createContextCore<Store>(
     set: (value: SetterArgs<Store>) => void;
     subscribe: (callback: () => void) => () => void;
   } {
-    const store = useRef(globalStore ?? initialState);
+    const store = useRef<Store>(globalStore ?? initialState);
 
     const get = useCallback(() => store.current, []);
 
@@ -82,11 +110,7 @@ function createContextCore<Store>(
     );
 
     const set = useCallback((value: SetterArgs<Store>) => {
-      if (typeof value === "function") {
-        value = value(store.current);
-      }
-
-      store.current = { ...store.current, ...value };
+      store.current = isFunction(value) ? value(store.current) : value;
 
       if (options.global) {
         globalStore = store.current;
@@ -280,7 +304,7 @@ function createContextCore<Store>(
       },
     });
 
-    return actionProxy as Prettify<ExtractActionKeys<typeof actions>>;
+    return actionProxy as unknown as ExtractActionKeys<typeof actions>;
   }
 
   return {
@@ -290,18 +314,4 @@ function createContextCore<Store>(
     subscribe: observable.subscribe,
     unsubscribe: observable.unsubscribe,
   };
-}
-
-export function createContextStore<Store>(
-  initialState: Store,
-  actions: Actions<Store> = {}
-) {
-  return createContextCore(initialState, actions);
-}
-
-export function createContextGlobalStore<Store>(
-  initialState: Store,
-  actions: Actions<Store> = {}
-) {
-  return createContextCore(initialState, actions, { global: true });
 }
