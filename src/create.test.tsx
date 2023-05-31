@@ -89,35 +89,10 @@ describe("createContextStore", () => {
       expect(prevUser).toBe(userAfterCountChange);
     }
   );
-  it.concurrent("should respect deepEqual option passed to useStore", () => {
-    const { result } = renderHookWithProvider(
-      () =>
-        store.useStore((store) => store, {
-          deepEqual: false,
-        }),
-      store.Provider
-    );
-    const prevUser = result.current.get.user;
-    act(() => {
-      result.current.set((prev) => ({
-        ...prev,
-        user: {
-          name: "Micheal",
-          age: 30,
-        },
-      }));
-    });
-    const userAfterChange = result.current.get.user;
-
-    expect(prevUser).toBe(userAfterChange);
-  });
   it.concurrent("should call compare function passed to useStore", () => {
     const compare = vi.fn(() => true);
     const { result } = renderHookWithProvider(
-      () =>
-        store.useStore((store) => store, {
-          compare,
-        }),
+      () => store.useStore((store) => store, compare),
       store.Provider
     );
     act(() => {
@@ -135,10 +110,7 @@ describe("createContextStore", () => {
   it.concurrent("should cause re-render if compare returns false", () => {
     const compare = vi.fn(() => false);
     const { result } = renderHookWithProvider(
-      () =>
-        store.useStore((store) => store, {
-          compare,
-        }),
+      () => store.useStore((store) => store, compare),
       store.Provider
     );
     act(() => {
@@ -157,10 +129,7 @@ describe("createContextStore", () => {
   it.concurrent("should not cause re-render if compare returns true", () => {
     const compare = vi.fn(() => true);
     const { result } = renderHookWithProvider(
-      () =>
-        store.useStore((store) => store, {
-          compare,
-        }),
+      () => store.useStore((store) => store, compare),
       store.Provider
     );
     const prevUser = result.current.get.user;

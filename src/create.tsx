@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import isEqual from "lodash.isequal";
 import React, {
   createContext,
   useCallback,
@@ -11,14 +10,10 @@ import React, {
 // explicit import from shim allow to use with react >= 17
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 
-function deepEqual(first: any, second: any) {
-  return isEqual(first, second);
-}
-
-export type SelectorOptions<Selected> = {
-  deepEqual?: boolean;
-  compare?: (first: Selected, second: Selected) => boolean;
-};
+export type SelectorOptions<Selected> = (
+  first: Selected,
+  second: Selected
+) => boolean;
 
 export type ContextOptions = {
   global?: boolean;
@@ -168,18 +163,15 @@ export function createContextStore<Store, A extends Actions<Store>>(
     selector: (store: Store) => SelectorOutput = (store) =>
       store as unknown as SelectorOutput,
     callback: (state: SelectorOutput) => void,
-    options: SelectorOptions<SelectorOutput> = {
-      deepEqual: false,
-    }
+    compare: SelectorOptions<SelectorOutput> = (first, second) =>
+      first === second
   ): () => void {
     let lastSelectedState: SelectorOutput | undefined;
 
     const shouldSendUpdates = (newSelectedState: SelectorOutput) => {
       if (
         lastSelectedState === undefined ||
-        (options.compare &&
-          !options.compare(lastSelectedState, newSelectedState)) ||
-        (options.deepEqual && !deepEqual(lastSelectedState, newSelectedState))
+        !compare(lastSelectedState, newSelectedState)
       ) {
         lastSelectedState = newSelectedState;
 
@@ -237,7 +229,8 @@ export function createContextStore<Store, A extends Actions<Store>>(
   function useStore<SelectorOutput = Store>(
     selector: (store: Store) => SelectorOutput = (store) =>
       store as unknown as SelectorOutput,
-    options: SelectorOptions<SelectorOutput> = {}
+    compare: SelectorOptions<SelectorOutput> = (first, second) =>
+      first === second
   ): {
     get: SelectorOutput;
     set: (value: SetterArgs<Store>) => void;
@@ -250,8 +243,6 @@ export function createContextStore<Store, A extends Actions<Store>>(
       throw new Error("Store not found");
     }
 
-    const { deepEqual: deepEqualOption = true, compare } = options;
-
     const state = useSyncExternalStore(
       store.subscribe,
       () => {
@@ -259,11 +250,7 @@ export function createContextStore<Store, A extends Actions<Store>>(
 
         if (
           lastSelectedState.current === undefined ||
-          (compare && !compare(lastSelectedState.current, selectedState)) ||
-          (lastSelectedState.current !== selectedState &&
-            deepEqualOption &&
-            !compare &&
-            !deepEqual(lastSelectedState.current, selectedState))
+          !compare(lastSelectedState.current, selectedState)
         ) {
           lastSelectedState.current = selectedState;
         }
