@@ -20,9 +20,15 @@ const initialState = {
 
 type HookFunction<T> = () => T;
 
+function createDefaultStore() {
+  return createContextStore(initialState);
+}
+
+type ContextRes = ReturnType<typeof createDefaultStore>;
+
 const renderHookWithProvider = <T,>(
   hook: HookFunction<T>,
-  Provider: ({ children }: { children: React.ReactNode }) => JSX.Element,
+  Provider: ContextRes["Provider"],
   options?: RenderHookOptions<T>
 ): RenderHookResult<T, T> => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -33,7 +39,7 @@ const renderHookWithProvider = <T,>(
 };
 
 describe("createContextStore", () => {
-  let store: ReturnType<typeof createContextStore<typeof initialState>>;
+  let store: ReturnType<typeof createDefaultStore>;
 
   beforeEach(() => {
     store = createContextStore(initialState);
@@ -53,7 +59,7 @@ describe("createContextStore", () => {
       store.Provider
     );
     act(() => {
-      result.current.set({ count: 1 });
+      result.current.set((prev) => ({ ...prev, count: 1 }));
     });
 
     expect(result.current.get.count).toEqual(1);
@@ -67,16 +73,17 @@ describe("createContextStore", () => {
       );
       const prevUser = result.current.get.user;
       act(() => {
-        result.current.set({ count: 1 });
+        result.current.set((prev) => ({ ...prev, count: 1 }));
       });
       const userAfterCountChange = result.current.get.user;
 
       expect(prevUser).toBe(userAfterCountChange);
 
       act(() => {
-        result.current.set({
+        result.current.set((prev) => ({
+          ...prev,
           hobbies: ["gardening"],
-        });
+        }));
       });
 
       expect(prevUser).toBe(userAfterCountChange);
@@ -92,12 +99,13 @@ describe("createContextStore", () => {
     );
     const prevUser = result.current.get.user;
     act(() => {
-      result.current.set({
+      result.current.set((prev) => ({
+        ...prev,
         user: {
           name: "Micheal",
           age: 30,
         },
-      });
+      }));
     });
     const userAfterChange = result.current.get.user;
 
@@ -113,12 +121,13 @@ describe("createContextStore", () => {
       store.Provider
     );
     act(() => {
-      result.current.set({
+      result.current.set((prev) => ({
+        ...prev,
         user: {
           name: "Micheal",
           age: 30,
         },
-      });
+      }));
     });
 
     expect(compare).toBeCalled();
@@ -133,12 +142,13 @@ describe("createContextStore", () => {
       store.Provider
     );
     act(() => {
-      result.current.set({
+      result.current.set((prev) => ({
+        ...prev,
         user: {
           name: "Micheal",
           age: 30,
         },
-      });
+      }));
     });
 
     expect(compare).toBeCalled();
@@ -155,12 +165,13 @@ describe("createContextStore", () => {
     );
     const prevUser = result.current.get.user;
     act(() => {
-      result.current.set({
+      result.current.set((prev) => ({
+        ...prev,
         user: {
           name: "Micheal",
           age: 30,
         },
-      });
+      }));
     });
 
     expect(result.current.get.user).toEqual(prevUser);
@@ -179,12 +190,13 @@ describe("createContextStore", () => {
         store.Provider
       );
       act(() => {
-        result.current.set({
+        result.current.set((prev) => ({
+          ...prev,
           user: {
             name: "Micheal",
             age: 30,
           },
-        });
+        }));
       });
       expect(selector).toBeCalledWith({
         ...initialState,
@@ -221,12 +233,13 @@ describe("createContextStore", () => {
         store.Provider
       );
       act(() => {
-        result.current.set({
+        result.current.set((prev) => ({
+          ...prev,
           user: {
             name: "Micheal",
             age: 30,
           },
-        });
+        }));
       });
       expect(result.current.selector()).toEqual({
         ...initialState,
@@ -245,9 +258,10 @@ describe("createContextStore", () => {
     );
     const prevUser = result.current.get;
     act(() => {
-      result.current.set({
+      result.current.set((prev) => ({
+        ...prev,
         count: 1,
-      });
+      }));
     });
 
     expect(result.current.get).toBe(prevUser);
