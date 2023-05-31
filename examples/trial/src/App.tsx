@@ -2,21 +2,37 @@ import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
 import { ActionablePayload, createContextStore } from "../../../src/create";
+import { produce } from "immer";
 
 const { Provider, useStore, useActions } = createContextStore(
   {
+    user: {
+      firstName: "John",
+      lastName: "Doe",
+      age: 20,
+      email: "",
+    },
     count: 0,
+    hobbies: ["football", "basketball"],
   },
   {
-    increment: ({ set, get }) => {
-      set({ count: get().count + 1 });
+    increment: ({ set }) => {
+      set(
+        produce((state) => {
+          state.count += 1;
+        })
+      );
     },
-    decrement: ({ set, get }) => {
-      set({ count: get().count - 1 });
+    decrement: ({ set }) => {
+      set(produce((state) => ({ count: state.count - 1 })));
     },
-    incrementBy: ({ set, get }, action: ActionablePayload<{ by: number }>) => {
+    incrementBy: ({ set }, action: ActionablePayload<{ by: number }>) => {
       console.log(action?.payload || "No payload");
-      set({ count: get().count + (action?.payload?.by || 10) });
+      set(
+        produce((state) => ({
+          count: state.count + (action?.payload?.by || 10),
+        }))
+      );
     },
   }
 );

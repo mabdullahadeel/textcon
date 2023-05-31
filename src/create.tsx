@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import isEqual from "lodash.isequal";
-import React, { createContext, useCallback, useContext, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
 
 // explicit import from shim allow to use with react >= 17
 import { useSyncExternalStore } from "use-sync-external-store/shim";
@@ -281,28 +287,32 @@ export function createContextStore<Store, A extends Actions<Store>>(
       throw new Error("Store not found");
     }
 
-    const actionProxy = new Proxy(actions, {
-      get: (target, prop) => {
-        const action = target[prop as string];
+    const actionProxy = useMemo(
+      () =>
+        new Proxy(actions, {
+          get: (target, prop) => {
+            const action = target[prop as string];
 
-        if (action) {
-          return (args: Parameters<typeof action>["1"]) => {
-            action(
-              {
-                set: store.set,
-                get: store.get,
-              },
-              {
-                payload: args,
-              }
-            );
-          };
-        }
-      },
-      set: () => {
-        throw new Error("Actions cannot be updated");
-      },
-    });
+            if (action) {
+              return (args: Parameters<typeof action>["1"]) => {
+                action(
+                  {
+                    set: store.set,
+                    get: store.get,
+                  },
+                  {
+                    payload: args,
+                  }
+                );
+              };
+            }
+          },
+          set: () => {
+            throw new Error("Actions cannot be updated");
+          },
+        }),
+      []
+    );
 
     return actionProxy as unknown as ExtractActionKeys<typeof actions>;
   }
