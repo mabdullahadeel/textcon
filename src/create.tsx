@@ -19,10 +19,45 @@ export type ContextOptions = {
 };
 
 type SetterArgs<Store> = Partial<Store> | ((prev: Store) => Partial<Store>);
+type ExtractActionKeys<T> = {
+  [K in keyof T]: T[K] extends (
+    stateProps: never,
+    action: infer A
+  ) => void | Promise<void>
+    ? A extends ActionablePayload<infer Payload>
+      ? Payload extends undefined
+        ? () => void
+        : (payload: Payload) => void
+      : never
+    : never;
+};
+
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+  // eslint-disable-next-line @typescript-eslint/ban-types
+} & {};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ActionablePayload<Payload = any> = {
+  payload: Payload;
+};
+
+type StateActionProps<Store> = {
+  set: (value: SetterArgs<Store>) => void;
+  get: () => Store;
+};
+
+type Actions<Store> = {
+  [key: string]: (
+    stateProps: StateActionProps<Store>,
+    action: ActionablePayload
+  ) => void | Promise<void>;
+};
 
 // eslint-disable-next-line max-lines-per-function
-export function createContextStore<Store>(
+function createContextCore<Store>(
   initialState: Store,
+  actions: Actions<Store> = {},
   options: ContextOptions = {}
 ) {
   let globalStore: Store | undefined = options.global
@@ -168,6 +203,7 @@ export function createContextStore<Store>(
    *  });
    * ```
    */
+
   function useStore<SelectorOutput = Store>(
     selector: (store: Store) => SelectorOutput = (store) =>
       store as unknown as SelectorOutput,
@@ -214,10 +250,58 @@ export function createContextStore<Store>(
     };
   }
 
+  function useActions() {
+    const store = useContext(StoreContext);
+
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    const actionProxy = new Proxy(actions, {
+      get: (target, prop) => {
+        const action = target[prop as string];
+
+        if (action) {
+          return (args: Parameters<typeof action>["1"]) => {
+            action(
+              {
+                set: store.set,
+                get: store.get,
+              },
+              {
+                payload: args,
+              }
+            );
+          };
+        }
+      },
+      set: () => {
+        throw new Error("Actions cannot be updated");
+      },
+    });
+
+    return actionProxy as Prettify<ExtractActionKeys<typeof actions>>;
+  }
+
   return {
     Provider,
     useStore,
+    useActions,
     subscribe: observable.subscribe,
     unsubscribe: observable.unsubscribe,
   };
+}
+
+export function createContextStore<Store>(
+  initialState: Store,
+  actions: Actions<Store> = {}
+) {
+  return createContextCore(initialState, actions);
+}
+
+export function createContextGlobalStore<Store>(
+  initialState: Store,
+  actions: Actions<Store> = {}
+) {
+  return createContextCore(initialState, actions, { global: true });
 }
