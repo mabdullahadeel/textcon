@@ -1,10 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import isEqual from "lodash.isequal";
-import React, { createContext, useCallback, useContext, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
 
 // explicit import from shim allow to use with react >= 17
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepEqual(first: any, second: any) {
   return isEqual(first, second);
 }
@@ -18,13 +24,76 @@ export type ContextOptions = {
   global?: boolean;
 };
 
-type SetterArgs<Store> = Partial<Store> | ((prev: Store) => Partial<Store>);
+type SetterArgs<Store> = Store | ((prev: Store) => Store);
+type ExtractActionKeys<T> = {
+  [K in keyof T]: T[K] extends (
+    stateProps: never,
+    action: infer A
+  ) => void | Promise<void>
+    ? A extends ActionablePayload<infer Payload>
+      ? Payload extends undefined
+        ? () => void
+        : (payload: Payload) => void
+      : () => void
+    : never;
+};
+
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+  // eslint-disable-next-line @typescript-eslint/ban-types
+} & {};
+
+export type ActionablePayload<Payload = any> = {
+  payload: Payload;
+};
+
+type StateActionProps<Store> = {
+  set: (value: SetterArgs<Store>) => void;
+  get: () => Store;
+};
+
+type Actions<Store> = {
+  [key: string]: (
+    stateProps: StateActionProps<Store>,
+    action: ActionablePayload
+  ) => void | Promise<void>;
+};
+
+type ContextReturnType<Store, A extends Actions<Store>> = {
+  Provider: React.FC<{ children: React.ReactNode }>;
+  useStore: <SelectorOutput = Store>(
+    selector?: (store: Store) => SelectorOutput,
+    options?: SelectorOptions<SelectorOutput>
+  ) => {
+    get: SelectorOutput;
+    set: (value: SetterArgs<Store>) => void;
+    selector: () => Store;
+  };
+  useActions: () => Prettify<ExtractActionKeys<A>>;
+  subscribe: (
+    selector: (store: Store) => Store,
+    callback: (state: Store) => void,
+    options?: SelectorOptions<Store>
+  ) => () => void;
+  unsubscribe: (callback: (state: Store) => void) => void;
+};
+
+function isFunction(value: any): value is (prev: any) => any {
+  return typeof value === "function";
+}
+
+export function createContextStore<Store, A extends Actions<Store>>(
+  ...args: Extract<A, { payload: A }> extends { payload: infer Payload }
+    ? [initialState: Store, actions?: A, options?: ContextOptions]
+    : [initialState: Store, options?: ContextOptions]
+): ContextReturnType<Store, A>;
 
 // eslint-disable-next-line max-lines-per-function
-export function createContextStore<Store>(
+export function createContextStore<Store, A extends Actions<Store>>(
   initialState: Store,
+  actions: A = {} as A,
   options: ContextOptions = {}
-) {
+): ContextReturnType<Store, A> {
   let globalStore: Store | undefined = options.global
     ? initialState
     : undefined;
@@ -38,7 +107,7 @@ export function createContextStore<Store>(
     set: (value: SetterArgs<Store>) => void;
     subscribe: (callback: () => void) => () => void;
   } {
-    const store = useRef(globalStore ?? initialState);
+    const store = useRef<Store>(globalStore ?? initialState);
 
     const get = useCallback(() => store.current, []);
 
@@ -47,11 +116,7 @@ export function createContextStore<Store>(
     );
 
     const set = useCallback((value: SetterArgs<Store>) => {
-      if (typeof value === "function") {
-        value = value(store.current);
-      }
-
-      store.current = { ...store.current, ...value };
+      store.current = isFunction(value) ? value(store.current) : value;
 
       if (options.global) {
         globalStore = store.current;
@@ -168,6 +233,7 @@ export function createContextStore<Store>(
    *  });
    * ```
    */
+
   function useStore<SelectorOutput = Store>(
     selector: (store: Store) => SelectorOutput = (store) =>
       store as unknown as SelectorOutput,
@@ -214,9 +280,47 @@ export function createContextStore<Store>(
     };
   }
 
+  function useActions() {
+    const store = useContext(StoreContext);
+
+    if (!store) {
+      throw new Error("Store not found");
+    }
+
+    const actionProxy = useMemo(
+      () =>
+        new Proxy(actions, {
+          get: (target, prop) => {
+            const action = target[prop as string];
+
+            if (action) {
+              return (args: Parameters<typeof action>["1"]) => {
+                action(
+                  {
+                    set: store.set,
+                    get: store.get,
+                  },
+                  {
+                    payload: args,
+                  }
+                );
+              };
+            }
+          },
+          set: () => {
+            throw new Error("Actions cannot be updated");
+          },
+        }),
+      []
+    );
+
+    return actionProxy as unknown as ExtractActionKeys<typeof actions>;
+  }
+
   return {
     Provider,
     useStore,
+    useActions,
     subscribe: observable.subscribe,
     unsubscribe: observable.unsubscribe,
   };
