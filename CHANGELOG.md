@@ -1,5 +1,20 @@
 # textcon
 
+## 0.0.4
+
+### Patch Changes
+
+- fd53c61: update state comparison logic
+
+  - by default states will be compared by strict equal comparison
+  - export function `shallow` for shallow comparison - single level
+
+- 8a6ff55: added `README` docs
+- ba29ae9: Support actions
+
+  - added first class support for actions
+  - updated core state merge logic
+
 ## 0.0.3
 
 ### Patch Changes
